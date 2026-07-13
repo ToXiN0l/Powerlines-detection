@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Инспекция ЛЭП — детекция дефектов изоляторов</title>
+<style>
+  :root {
+    --bg: #f2f3f0;
+    --surface: #ffffff;
+    --ink: #171d1f;
+    --muted: #5c6b6e;
+    --line: #ccd3d1;
+    --line-strong: #a9b3b1;
+    --accent: #21615a;
+    --accent-strong: #163f3a;
+    --accent-soft: #e2ece9;
+    --danger: #8a3b2b;
+
+    --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+  }
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 20px;
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 30px;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14.5px;
+    max-width: 60ch;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 24px;
+  }
+
+  .panel + .panel { }
+
+  .field-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .control-group {
+    margin-bottom: 26px;
+  }
+  .control-group:last-child { margin-bottom: 0; }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .segmented input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .segmented label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 4px;
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--ink);
+    border-right: 1px solid var(--line);
+    transition: background-color 0.15s ease, color 0.15s ease;
+    text-align: center;
+  }
+  .segmented label:last-child { border-right: none; }
+
+  .segmented label span.hint {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .segmented input:checked + label {
+    background: var(--accent);
+    color: #fff;
+  }
+  .segmented input:checked + label span.hint { color: #d9ece8; }
+
+  .segmented input:focus-visible + label {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+  }
+
+  .threshold-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .threshold-value {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--line-strong);
+    border-radius: 2px;
+    margin: 14px 0 6px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--accent);
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--accent);
+    cursor: pointer;
+  }
+
+  input[type="range"]:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 4px;
+  }
+
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+
+  .dropzone {
+    position: relative;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 3px;
+    background: var(--bg);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .dropzone.is-dragover {
+    border-style: solid;
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dropzone.has-file {
+    cursor: default;
+    padding: 16px;
+    text-align: left;
+  }
+
+  .reticle-corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .dropzone.is-dragover .reticle-corner { opacity: 1; }
+  .reticle-tl { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; }
+  .reticle-tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; }
+  .reticle-bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; }
+  .reticle-br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; }
+
+  .dropzone-icon {
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .dropzone.is-dragover .dropzone-icon { color: var(--accent-strong); }
+
+  .dropzone-text {
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .dropzone-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .file-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-thumb {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .file-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-name {
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-size {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .file-remove {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px 9px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .file-remove:hover { border-color: var(--danger); color: var(--danger); }
+
+  #file-input { display: none; }
+
+  .btn-primary {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 3px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-strong); }
+  .btn-primary:disabled {
+    background: var(--line);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  .btn-primary:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+
+  .result-panel {
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .figure-frame {
+    position: relative;
+    flex: 1;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: repeating-linear-gradient(
+      45deg,
+      var(--bg),
+      var(--bg) 10px,
+      #ebece9 10px,
+      #ebece9 20px
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .figure-frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .figure-frame .reticle-corner { width: 18px; height: 18px; opacity: 0.6; }
+
+  .placeholder-text {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .caption-bar {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .caption-bar strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .caption-bar .error-text {
+    color: var(--danger);
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(242, 243, 240, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--line-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: var(--line-strong); }
+    * { transition: none !important; }
+  }
+
+  footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div class="eyebrow">Инспекция ЛЭП · YOLO · RT-DETR</div>
+    <h1>Детекция дефектов изоляторов</h1>
+    <p class="subtitle">Загрузите снимок линии электропередачи, выберите модель и порог уверенности — сервис выделит найденные объекты на изображении.</p>
+  </div>
+
+  <div class="layout">
+
+    <section class="panel controls">
+
+      <div class="control-group">
+        <span class="field-label">Модель</span>
+        <div class="segmented" id="model-select">
+          <input type="radio" name="model" id="model-light" value="light" checked>
+          <label for="model-light">Лёгкая<span class="hint">быстрее</span></label>
+
+          <input type="radio" name="model" id="model-balanced" value="balanced">
+          <label for="model-balanced">Сбалансированная<span class="hint">баланс</span></label>
+
+          <input type="radio" name="model" id="model-quality" value="quality">
+          <label for="model-quality">Качественная<span class="hint">точнее</span></label>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="threshold-row">
+          <span class="field-label" style="margin-bottom:0;">Порог уверенности</span>
+          <span class="threshold-value" id="threshold-value">25%</span>
+        </div>
+        <input type="range" id="threshold-slider" min="1" max="99" value="25" step="1">
+        <div class="scale-labels"><span>1%</span><span>99%</span></div>
+      </div>
+
+      <div class="control-group">
+        <span class="field-label">Изображение</span>
+        <div class="dropzone" id="dropzone">
+          <span class="reticle-corner reticle-tl"></span>
+          <span class="reticle-corner reticle-tr"></span>
+          <span class="reticle-corner reticle-bl"></span>
+          <span class="reticle-corner reticle-br"></span>
+
+          <div id="dropzone-empty">
+            <div class="dropzone-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 16V4M12 4L7 9M12 4l5 5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="dropzone-text">Перетащите изображение сюда</div>
+            <div class="dropzone-hint">или нажмите, чтобы выбрать файл</div>
+          </div>
+
+          <div class="file-card" id="dropzone-file" style="display:none;">
+            <img class="file-thumb" id="file-thumb" alt="">
+            <div class="file-meta">
+              <div class="file-name" id="file-name"></div>
+              <div class="file-size" id="file-size"></div>
+            </div>
+            <button type="button" class="file-remove" id="file-remove">Убрать</button>
+          </div>
+        </div>
+        <input type="file" id="file-input" accept="image/*">
+      </div>
+
+      <button type="button" class="btn-primary" id="analyze-btn" disabled>Запустить детекцию</button>
+    </section>
+
+    <section class="panel result-panel">
+      <div class="figure-frame" id="figure-frame">
+        <span class="reticle-corner reticle-tl" style="opacity:0.6;"></span>
+        <span class="reticle-corner reticle-tr" style="opacity:0.6;"></span>
+        <span class="reticle-corner reticle-bl" style="opacity:0.6;"></span>
+        <span class="reticle-corner reticle-br" style="opacity:0.6;"></span>
+
+        <div class="placeholder-text" id="figure-placeholder">Результат появится здесь<br>после загрузки изображения</div>
+        <img id="result-image" style="display:none;" alt="Результат детекции">
+
+        <div class="loading-overlay" id="loading-overlay">
+          <div class="spinner"></div>
+          <div class="loading-text">Обработка изображения…</div>
+        </div>
+      </div>
+
+      <div class="caption-bar" id="caption-bar" style="display:none;"></div>
+    </section>
+
+  </div>
+
+  <footer>Powerlines Detection API · YOLO · RT-DETR (ultralytics)</footer>
+</div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const dropzoneEmpty = document.getElementById('dropzone-empty');
+  const dropzoneFile = document.getElementById('dropzone-file');
+  const fileInput = document.getElementById('file-input');
+  const fileThumb = document.getElementById('file-thumb');
+  const fileName = document.getElementById('file-name');
+  const fileSize = document.getElementById('file-size');
+  const fileRemove = document.getElementById('file-remove');
+
+  const thresholdSlider = document.getElementById('threshold-slider');
+  const thresholdValue = document.getElementById('threshold-value');
+
+  const analyzeBtn = document.getElementById('analyze-btn');
+  const figureFrame = document.getElementById('figure-frame');
+  const figurePlaceholder = document.getElementById('figure-placeholder');
+  const resultImage = document.getElementById('result-image');
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const captionBar = document.getElementById('caption-bar');
+
+  let selectedFile = null;
+  let dragCounter = 0;
+
+  thresholdSlider.addEventListener('input', () => {
+    thresholdValue.textContent = thresholdSlider.value + '%';
+  });
+
+  dropzone.addEventListener('click', () => {
+    if (!selectedFile) fileInput.click();
+  });
+
+  dropzone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragCounter++;
+    dropzone.classList.add('is-dragover');
+  });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  dropzone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropzone.classList.remove('is-dragover');
+    }
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    dropzone.classList.remove('is-dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  fileRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearFile();
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите файл изображения.');
+      return;
+    }
+    selectedFile = file;
+
+    fileThumb.src = URL.createObjectURL(file);
+    fileName.textContent = file.name;
+    fileSize.textContent = formatBytes(file.size);
+
+    dropzoneEmpty.style.display = 'none';
+    dropzoneFile.style.display = 'flex';
+    dropzone.classList.add('has-file');
+
+    analyzeBtn.disabled = false;
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = '';
+    dropzoneEmpty.style.display = 'block';
+    dropzoneFile.style.display = 'none';
+    dropzone.classList.remove('has-file');
+    analyzeBtn.disabled = true;
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' Б';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+  }
+
+  function formatInferenceTime(ms) {
+    if (ms < 1000) return Math.round(ms) + ' мс';
+    return (ms / 1000).toFixed(2) + ' с';
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    const model = document.querySelector('input[name="model"]:checked').value;
+    const thresholdPercent = parseInt(thresholdSlider.value, 10);
+    const threshold = thresholdPercent / 100;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Обработка…';
+    figurePlaceholder.style.display = 'none';
+    loadingOverlay.classList.add('active');
+    captionBar.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('model', model);
+    formData.append('threshold', threshold);
+
+    try {
+      const response = await fetch('/predict', { method: 'POST', body: formData });
+
+      if (!response.ok) {
+        throw new Error('Сервер вернул статус ' + response.status);
+      }
+
+      const detectionsCount = response.headers.get('X-Detections-Count') ?? '—';
+      const modelUsed = response.headers.get('X-Model-Used') ?? model;
+      const inferenceTimeMs = response.headers.get('X-Inference-Time-Ms');
+
+      const blob = await response.blob();
+      resultImage.src = URL.createObjectURL(blob);
+      resultImage.style.display = 'block';
+
+      const modelLabels = { light: 'лёгкая', balanced: 'сбалансированная', quality: 'качественная' };
+      const modelLabel = modelLabels[modelUsed] ?? modelUsed;
+      const timeLabel = inferenceTimeMs ? formatInferenceTime(parseFloat(inferenceTimeMs)) : '—';
+      captionBar.innerHTML =
+        '<span>Модель: <strong>' + modelLabel + '</strong></span>' +
+        '<span>Порог: <strong>' + thresholdPercent + '%</strong></span>' +
+        '<span>Найдено объектов: <strong>' + detectionsCount + '</strong></span>' +
+        '<span>Время инференса: <strong>' + timeLabel + '</strong></span>';
+      captionBar.style.display = 'flex';
+
+    } catch (err) {
+      resultImage.style.display = 'none';
+      figurePlaceholder.style.display = 'block';
+      figurePlaceholder.textContent = 'Ошибка запроса';
+      captionBar.innerHTML = '<span class="error-text">Не удалось получить ответ от сервера: ' + err.message + '</span>';
+      captionBar.style.display = 'flex';
+    } finally {
+      loadingOverlay.classList.remove('active');
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Запустить детекцию';
+    }
+  });
+</script>
+</body>
+</html>
