@@ -1,5 +1,6 @@
 import io
 import time
+from huggingface_hub import hf_hub_download
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -9,9 +10,21 @@ from PIL import Image
 app = FastAPI(title="Powerlines Detection API")
 
 MODEL_PATHS = {
-    "light" : "weights/yolo26m.pt",
-    "balanced" : "weights/yolo26x.pt",
-    "quality" : "weights/rtdetr-x.pt",
+    "light" : hf_hub_download(
+        repo_id="ToXiN0/Yolo",
+        filename="yolo26m.pt",
+        local_dir="weights"
+    ),
+    "balanced" : hf_hub_download(
+        repo_id="ToXiN0/Yolo",
+        filename="yolo26x.pt",
+        local_dir="weights"
+    ),
+    "quality" : hf_hub_download(
+        repo_id="ToXiN0/Yolo",
+        filename="rtdetr-x.pt",
+        local_dir="weights"
+    ),
 }
 
 models = {name: YOLO(path) for name, path in MODEL_PATHS.items()}

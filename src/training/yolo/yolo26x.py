@@ -1,8 +1,10 @@
 from ultralytics import YOLO
+from src.training.yolo.yolo26m import YAML_PATH, save_results, download_dataset
 
-
-yaml_path = 'yolo_dataset/dataset.yaml'
+download_dataset()
 
 model = YOLO('yolo26x.pt')
-model.train(data=yaml_path, epochs=40, imgsz=640, device="cuda")
+model.train(data=YAML_PATH, epochs=60, imgsz=640, device="cuda")
 model.save("weights/yolo26x.pt")
+
+save_results(model)
