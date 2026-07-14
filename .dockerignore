@@ -1,0 +1,8 @@
+venv/
+dataset/
+yolo_dataset/
+runs/
+.ipynb_checkpoints/
+.mypy_cache/
+*.pt
+*.png

@@ -1,5 +1,5 @@
 from ultralytics import RTDETR
-from src.training.yolo.yolo26m import YAML_PATH, save_results, download_dataset
+from src.training.yolo.yolo26m import YAML_PATH, WEIGHTS_PATH, save_results, download_dataset
 
 download_dataset()
 
@@ -12,6 +12,7 @@ model.train(
     amp=False,
     lr0=0.0001,
 )
-model.save("weights/rtdetr-x.pt")
+save_path = f"{WEIGHTS_PATH}/{model.overrides.get('model')}"
+model.save(save_path)
 
 save_results(model)

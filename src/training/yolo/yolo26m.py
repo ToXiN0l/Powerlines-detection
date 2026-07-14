@@ -34,7 +34,9 @@ def download_dataset(repo_name="ToXiN0/Powerlines-detection", local_name="yolo_d
     )
 
 YAML_PATH = 'yolo_dataset/dataset.yaml'
+WEIGHTS_PATH = 'weights'
 
 model = YOLO('yolo26m.pt')
 model.train(data=YAML_PATH, epochs=40, imgsz=640, device="cuda")
-model.save("weights/yolo26m.pt")
+save_path = f"{WEIGHTS_PATH}/{model.overrides.get('model')}"
+model.save(save_path)
